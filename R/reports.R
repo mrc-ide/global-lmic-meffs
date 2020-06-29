@@ -66,6 +66,7 @@ reports_3parameter_day <- function(date = NULL) {
   }
 
   reports$date <- as.character(date)
+  DBI::dbDisconnect(db)
   setwd(wdold)
   return(reports)
 }
@@ -132,6 +133,7 @@ reports_4parameter_day <- function(date = NULL) {
   }
 
   reports$date <- as.character(date)
+  DBI::dbDisconnect(db)
   setwd(wdold)
   return(reports)
 }
@@ -219,6 +221,7 @@ get_brt_model <- function(date) {
   # copy brt
   src <- file.path(wd, "archive", "brt_google_mobility", brt_id_max, "google_brt_model.rds")
   brt <- readRDS(src)
+  DBI::dbDisconnect(db)
   return(brt)
 
   }
@@ -267,6 +270,7 @@ get_brt_predictions <- function(date) {
   # copy brt
   src <- file.path(wd, "archive", "brt_google_mobility", brt_id_max, "google_brt.rds")
   brt <- readRDS(src)
+  DBI::dbDisconnect(db)
   return(brt)
 
 }
@@ -315,6 +319,7 @@ get_brt_world_bank_classification <- function(date) {
   # copy brt
   src <- file.path(wd, "archive", "brt_google_mobility", brt_id_max, "World_Bank_Country_Metadata.csv")
   brt <- read.csv(src)
+  DBI::dbDisconnect(db)
   return(brt)
 
 }
