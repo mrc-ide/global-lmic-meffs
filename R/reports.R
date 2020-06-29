@@ -53,7 +53,7 @@ reports_3parameter_day <- function(date = NULL) {
             JOIN parameters
               ON parameters.report_version = report_version.id
            WHERE report_version_artefact.report_version IN (%s)
-             AND report = "lmic_reports_google"
+             AND report = "lmic_reports_google_pmcmc_no_decouple"
              AND parameters.name = "iso3c"
            ORDER BY country, report_version.id'
   sql <- sprintf(sql, paste(sprintf('"%s"', id), collapse = ", "))
