@@ -1,0 +1,27 @@
+Package: globallmicmeffs
+Type: Package
+Title: Analysis of LMIC COVID-19 Meffs
+Version: 0.1.0
+Authors@R: c(
+  person("OJ", "Watson", email = "o.watson15@imperial.ac.uk", role = c("aut", "cre")),
+  person("Patrick", "Walker", email = "patrick.walker06@imperial.ac.uk", role = c("aut")),
+  person("Charlie", "Whittaker", email = "charles.whittaker16@imperial.ac.uk", role = c("aut"))
+  )
+Description: More about what it does (maybe more than one line)
+    Use four spaces when indenting paragraphs within the Description.
+License: MIT + file LICENSE
+Encoding: UTF-8
+LazyData: true
+Imports: 
+    orderly,
+    tidyr,
+    dplyr,
+    here,
+    DBI,
+    pbapply,
+    squire (>= 0.4.19),
+    countrycode,
+    ggfortify,
+    factoextra
+Remotes:
+    mrc-ide/squire

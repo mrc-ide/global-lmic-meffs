@@ -1,0 +1,83 @@
+[ name       ]  ecdc
+[ id         ]  20200616-032946-c2ae7693
+[ parameter  ]  date: 2020-06-15
+[ start      ]  2020-06-16 03:29:46
+[ parameter  ]  date: 2020-06-15
+
+Attaching package: ‘lubridate’
+
+The following objects are masked from ‘package:base’:
+
+    date, intersect, setdiff, union
+
+
+> date <- as.Date(date, "%Y-%m-%d")
+
+> if (is.na(date)) {
++     stop("Date must be provided in ISO format (i.e., YYYY-MM-DD)")
++ }
+
+> fmt <- "https://www.ecdc.europa.eu/sites/default/files/documents/COVID-19-geographic-disbtribution-worldwide-%s.xlsx"
+
+> date_iso <- as.character(date)
+
+> url <- sprintf(fmt, date_iso)
+
+> url_page <- "https://www.ecdc.europa.eu/en/publications-data/download-todays-data-geographic-distribution-covid-19-cases-worldwide"
+
+> tryCatch({
++     code <- download.file(url, "ecdc.xlsx", mode = "wb")
++     if (code != 0) {
++         stop("Error downloading file")
++     }
++ }, error = function(e) {
++     stop(sprintf("Error downloading file '%s': %s, please check %s", 
++         url, e$message, url_page))
++ })
+
+> d <- readxl::read_excel("ecdc.xlsx", progress = FALSE)
+
+> names(d)[1] <- "dateRep"
+
+> names(d)[names(d) %in% c("Countries and territories", 
++     "countriesAndTerritories")] <- "Region"
+
+> if (is.na(as.Date(d$dateRep[1], "%Y-%m-%d"))) {
++     d$dateRep <- as.Date(d$dateRep, format = "%d/%m/%Y")
++ }
+
+> d[which(d$countryterritoryCode == "PHL" & as.Date(d$dateRep) == 
++     as.Date("2020-02-02")), ]$deaths <- 0
+
+> d[which(d$countryterritoryCode == "PAN" & as.Date(d$dateRep) == 
++     "2020-06-04"), ]$deaths <- d[which(d$countryterritoryCode == 
++     "PAN" & as.Date(d$dateRep) == "2020-06-04"), ]$deaths + d[which(d$countryterritoryCode == 
++     "PAN" & as.Date(d$dateRep) == "2020-06-03"), ]$deaths
+
+> d[which(d$countryterritoryCode == "PAN" & as.Date(d$dateRep) == 
++     "2020-06-03"), ]$deaths <- 0
+
+> d$deaths[d$countryterritoryCode == "ESP" & d$deaths < 
++     0] <- 0
+
+> if (date >= as.Date("2020-06-15")) {
++     if (!any(as.Date(d$dateRep) == date & d$countryterritoryCode == 
++         "ESP", na.rm = TRUE)) {
++         to_add <- d[which(d$countryterritoryCode == "ESP"), ][1, 
++             ]
++         to_add$dateRep <- d$dateRep[which(as.Date(d$dateRep) == 
++             as.Date("2020-06-15"))][1]
++         to_add$day <- 15
++         to_add$cases <- 0
++         to_add$deaths <- 0
++         d <- rbind(d, to_add)
++     }
++ }
+
+> saveRDS(d, "ecdc_all.rds")
+[ end        ]  2020-06-16 03:29:47
+[ elapsed    ]  Ran report in 0.9859371 secs
+[ artefact   ]  ecdc.xlsx: 417ca39053cab3e28bf6c2267f935149
+[ ...        ]  ecdc_all.rds: f7189b41e5fa6847740bd63f4292d2a0
+[ commit     ]  ecdc/20200616-032946-c2ae7693
+[ copy       ]
