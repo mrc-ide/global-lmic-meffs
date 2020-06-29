@@ -12,13 +12,13 @@ conflict_prefer("area", "patchwork")
 source(file.path(here::here(),"analysis/01_epidemic_tracectories_and_counterfactuals/functions.R"))
 
 # Collating Report Dates
-date_0 <- "2020-06-17"
+date_0 <- "2020-06-27"
 reports <- reports_3parameter_day(date_0)
 
 # Accessing World Bank Metadata
 raw_wb_metadata <- get_brt_world_bank_classification(date_0)
 wb_metadata <- raw_wb_metadata %>%
-  rename(iso = country_code) %>%
+  rename(iso = ï..country_code) %>%
   dplyr::select(iso, income_group) %>%
   filter(income_group != "") %>%
   mutate(income_group = factor(income_group, levels = rev(c("Low income", "Lower middle income", "Upper middle income", "High income"))))
