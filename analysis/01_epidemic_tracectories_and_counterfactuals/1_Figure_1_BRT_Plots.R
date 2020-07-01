@@ -10,6 +10,7 @@ conflict_prefer("select", "dplyr"); conflict_prefer("filter", "dplyr"); conflict
 source(file.path(here::here(),"analysis/01_epidemic_tracectories_and_counterfactuals/functions.R"))
 
 # Boosted Regression Tree Inference of Mobility Plotting
+date_0 <- "2020-06-27"
 mobility <- get_brt_predictions(date_0)
 mobility <- do.call(rbind, mobility)
 
@@ -44,9 +45,11 @@ b <- ggplot(specific_countries, aes(x = date, y = C)) +
   geom_point(size = 2) +
   facet_wrap(~iso3c, labeller = labeller(country_labels)) +
   geom_line(aes(x = date, y = C_predict, col = iso3c), size = 2) +
-  scale_colour_manual(values = c("#DBC453", "#DD954D", "#BD7EE2", "#63AD4A")) +
+  scale_colour_manual(values = c("#EBA4A4", "#BB9BBF", "#6C7F81", "#8EB7CC")) +
   theme_bw() +
   labs(x = "Date", y = "Mobility Change (%)") +
   theme(legend.position = "none")
+
+a + b
 
 

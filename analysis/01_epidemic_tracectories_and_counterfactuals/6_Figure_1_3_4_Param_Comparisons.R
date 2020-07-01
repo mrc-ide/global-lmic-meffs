@@ -69,12 +69,12 @@ y <- format_output(x, var_select = "deaths") %>%
   left_join(country_specific_mob, by = c("actual_date" = "date"))
 
 scaling_factor <- 100
-scale <- 0.01
-ggplot(y, aes(x = actual_date, y = deaths_mean, ymin = deaths_min, ymax = deaths_max)) +
-  geom_ribbon(alpha = 0.2) +
-  geom_line() +
-  geom_line(aes(x = actual_date, y = scaling_factor * C)) +
-  geom_point(aes(x = actual_date, y = deaths)) +
+scale <- 1/scaling_factor
+a <- ggplot(y, aes(x = actual_date, y = deaths_mean, ymin = deaths_min, ymax = deaths_max)) +
+  geom_ribbon(alpha = 0.2, fill = "#F85E00") +
+  geom_line(col = "#F85E00", size = 1.5) +
+  geom_line(aes(x = actual_date, y = scaling_factor * C), size = 1.5) +
+  geom_point(aes(x = actual_date, y = deaths), col = "#F85E00") +
   scale_y_continuous(name = "Deaths", sec.axis = sec_axis(~.*scale, name = "Mobility Relative to Baseline")) +
   theme(plot.margin = unit(c(0.5, 0.5, 0.5, 0.5), "cm"),
         axis.title.y = element_text(vjust = 2),
@@ -83,6 +83,7 @@ ggplot(y, aes(x = actual_date, y = deaths_mean, ymin = deaths_min, ymax = deaths
 # Graphs for 4 Param Fit
 x <- four_param_list[[i]]
 start_dates <- data.frame(start_date = x$replicate_parameters$start_date, replicate = seq(1, 200, 1))
+
 y <- format_output(x, var_select = "deaths") %>%
   filter(!is.na(t), !is.na(y)) %>%
   left_join(start_dates, by = "replicate") %>%
@@ -91,18 +92,27 @@ y <- format_output(x, var_select = "deaths") %>%
   mutate(min_date = min(t)) %>%
   mutate(rel_date = t - min_date) %>%
   mutate(actual_date = start_date + rel_date) %>%
-  select(replicate, actual_date, y) %>%
+  select(t, replicate, actual_date, y) %>%
   group_by(actual_date) %>%
   summarise(deaths_min = quantile(y, 0.05),
             deaths_max = quantile(y, 0.95),
             deaths_mean = mean(y)) %>%
-  left_join(deaths_data, by = c("actual_date" = "date"))
+  left_join(deaths_data, by = c("actual_date" = "date")) %>%
+  left_join(country_specific_mob, by = c("actual_date" = "date"))
 
-ggplot(y, aes(x = actual_date, y = deaths_mean, ymin = deaths_min, ymax = deaths_max)) +
-  geom_ribbon(alpha = 0.2) +
-  geom_line() +
-  geom_point(aes(x = actual_date, y = deaths))
-  
+four_scaling_factor <- 50
+four_scale <- 1/four_scaling_factor
+b <- ggplot(y, aes(x = actual_date, y = deaths_mean, ymin = deaths_min, ymax = deaths_max)) +
+  geom_ribbon(alpha = 0.2, fill = "#119822") +
+  geom_line(col = "#119822", size = 1.5) +
+  geom_line(aes(x = actual_date, y = four_scaling_factor * C), size = 1.5) +
+  geom_point(aes(x = actual_date, y = deaths), col = "#119822") +
+  scale_y_continuous(name = "Deaths", sec.axis = sec_axis(~.*four_scale, name = "Mobility Relative to Baseline")) +
+  theme(plot.margin = unit(c(0.5, 0.5, 0.5, 0.5), "cm"),
+        axis.title.y = element_text(vjust = 2),
+        axis.title.y.right = element_text(vjust = 3))
+
+a + b
 
 
 
