@@ -1,0 +1,354 @@
+[ name       ]  brt_google_mobility
+[ id         ]  20200708-224520-56a2c4b0
+[ resource   ]  World_Bank_Country_Metadata.csv
+[ ...        ]  acaps.xlsx
+[ parameter  ]  date: 2020-05-02
+[ ...        ]  short_run: FALSE
+[ start      ]  2020-07-08 22:45:20
+[ parameter  ]  date: 2020-05-02
+[ ...        ]  short_run: FALSE
+
+Attaching package: ‘lubridate’
+
+The following objects are masked from ‘package:base’:
+
+    date, intersect, setdiff, union
+
+
+Attaching package: ‘dplyr’
+
+The following objects are masked from ‘package:stats’:
+
+    filter, lag
+
+The following objects are masked from ‘package:base’:
+
+    intersect, setdiff, setequal, union
+
+Loaded gbm 2.1.5
+Loading required package: raster
+Loading required package: sp
+
+Attaching package: ‘raster’
+
+The following object is masked from ‘package:dplyr’:
+
+    select
+
+
+Attaching package: ‘tidyr’
+
+The following object is masked from ‘package:raster’:
+
+    extract
+
+
+> library(gbm)
+
+> library(dismo)
+
+> library(conflicted)
+
+> library(gtools)
+
+> library(lubridate)
+
+> conflict_prefer("select", "dplyr")
+[conflicted] Will prefer dplyr::select over any other package
+
+> conflict_prefer("filter", "dplyr")
+[conflicted] Will prefer dplyr::filter over any other package
+
+> conflict_prefer("area", "patchwork")
+[conflicted] Will prefer patchwork::area over any other package
+
+> download_url <- function(url) {
++     tryCatch({
++         tf <- tempfile()
++         code <- download.file(url, tf, mode = "wb")
++         if (code != 0) {
++             stop("Error downloading file")
++         }
++     }, error = function(e) {
++         stop(sprintf("Error downloading file '%s': %s, please check %s", 
++             url, e$message))
++     })
++     return(tf)
++ }
+
+> match_clean <- function(a, b, quiet = TRUE) {
++     a <- gsub("[[:punct:][:space:]]", "", tolower(stringi::stri_trans_general(a, 
++         "latin-ascii")))
++     b <- gsub("[[:punct:][:space:]]", "", tolower(stringi::stri_trans_general(b, 
++         "latin-ascii")))
++     ret <- match(a, b)
++     if (sum(is.na(ret) > 0)) {
++         dists <- stringdist::seq_distmatrix(lapply(a, utf8ToInt), 
++             lapply(b, utf8ToInt))
++         ret[is.na(ret)] <- apply(dists[which(is.na(ret)), , drop = FALSE], 
++             1, which.min)
++         if (!quiet) {
++             return(unique(cbind(a, b[ret])))
++         }
++     }
++     return(ret)
++ }
+
+> date <- as.Date(date)
+
+> goog_tf <- download_url("https://www.gstatic.com/covid19/mobility/Global_Mobility_Report.csv")
+
+> goog <- read.csv(goog_tf, stringsAsFactors = FALSE)
+
+> goog$iso3c <- countrycode::countrycode(goog$country_region, 
++     "country.name", "iso3c")
+
+> mob <- goog %>% filter(sub_region_1 == "") %>% mutate(overall = 1/4 * 
++     retail_and_recreation_percent_change_from_baseline + 1/4 * 
++     grocery_and_pharmacy_percent_change_from_baseline + 1/4 * 
++     transit_stations_percent_change_from_baseline + 1/4 * workplaces_percent_change_from_baseline) %>% 
++     mutate(date = as.Date(date, format = "%Y-%m-%d")) %>% select(country_region, 
++     iso3c, date, overall)
+
+> wb_metadata <- read.csv("World_Bank_Country_Metadata.csv", 
++     fileEncoding = "UTF-8-BOM") %>% rename(ISO = country_code) %>% 
++     select(ISO, income_group, region) %>% filter(region != "")
+
+> acap_site <- "http://www.acaps.org/covid19-government-measures-dataset"
+
+> xml <- xml2::read_html(acap_site)
+
+> url <- rvest::html_attr(rvest::html_nodes(xml, ".file a"), 
++     "href")
+
+> acap_tf <- download_url(url)
+
+> acap <- readxl::read_excel(acap_tf, progress = FALSE, 
++     sheet = "Database")
+
+> acap$ISO <- countrycode::countrycode(acap$COUNTRY, 
++     "country.name", "iso3c", custom_match = c(Eswatini = "SWZ", 
++         Micronesia = "FSM"))
+
+> ACAPs_measure <- acap %>% rename(country = COUNTRY, 
++     measure = MEASURE, type = LOG_TYPE, date = DATE_IMPLEMENTED) %>% 
++     select(ISO, measure, type, date) %>% filter(measure != "", 
++     type != "") %>% mutate(measure = as.numeric(factor(measure)), 
++     type = as.numeric(factor(type))) %>% mutate(combined = as.factor(paste0("m_", 
++     type, "_", measure))) %>% mutate(date = as.Date(date)) %>% 
++     select(ISO, date, combined) %>% pivot_wider(names_from = combined, 
++     values_from = combined) %>% filter(!is.na(date))
+
+> measures <- colnames(ACAPs_measure)[-(1:2)]
+
+> for (i in 1:length(measures)) {
++     index <- measures[i]
++     ACAPs_measure[, index] <- unlist(lapply(ACAPs_measure[[index]], 
++         length))
++ }
+
+> new_ACAPs_measure <- ACAPs_measure %>% group_by(ISO) %>% 
++     arrange(date) %>% mutate_at(vars(-ISO, -date), funs(cumsum(.))) %>% 
++     complete(date = seq.Date(min(ACAPs_measure$date), max(ACAPs_measure$date), 
++         by = "days")) %>% mutate_at(vars(-ISO, -date), funs(replace(., 
++     row_number() == 1, 0)))
+
+> column_names <- colnames(new_ACAPs_measure)[-c(1:2)]
+
+> new_ACAPs_cat <- fill(new_ACAPs_measure, column_names, 
++     .direction = c("down"))
+Note: Using an external vector in selections is ambiguous.
+ℹ Use `all_of(column_names)` instead of `column_names` to silence this message.
+ℹ See <https://tidyselect.r-lib.org/reference/faq-external-vector.html>.
+This message is displayed once per session.
+
+> overall <- new_ACAPs_cat %>% left_join(mob, by = c(ISO = "iso3c", 
++     date = "date")) %>% filter(!is.na(overall)) %>% left_join(wb_metadata, 
++     by = "ISO") %>% select(-country_region)
+
+> overall_test <- overall %>% ungroup(ISO) %>% select(overall, 
++     everything(), -ISO, -date)
+
+> tree_complexity <- 8
+
+> bag_fraction <- 0.5
+
+> if (short_run) {
++     max_trees <- 30
++ } else {
++     max_trees <- 3000
++ }
+
+> learning_rate <- 0.05
+
+> x <- as.data.frame(overall_test)
+
+> brt <- gbm.step(data = x, gbm.x = 2:ncol(x), gbm.y = 1, 
++     family = "gaussian", tree.complexity = tree_complexity, learning.rate = learning_rate, 
++     bag.fraction = bag_fraction, max.trees = max_trees, n.folds = 5, 
++     plot.main = FALSE, plot.folds = FALSE)
+
+ 
+ GBM STEP - version 2.9 
+ 
+Performing cross-validation optimisation of a boosted regression tree model 
+for overall and using a family of gaussian 
+Using 18204 observations and 81 predictors 
+creating 5 initial models of 50 trees 
+
+ folds are unstratified 
+total mean deviance =  565.5674 
+tolerance is fixed at  0.5656 
+ntrees resid. dev. 
+50    183.9619 
+now adding trees... 
+100   132.3836 
+150   112.5254 
+200   101.5697 
+250   94.3515 
+300   89.1428 
+350   84.8882 
+400   81.6631 
+450   79.1003 
+500   76.8668 
+550   75.0621 
+600   73.5124 
+650   72.3315 
+700   71.1577 
+750   70.1777 
+800   69.4001 
+850   68.6687 
+900   67.9736 
+950   67.5151 
+1000   66.9031 
+1050   66.4521 
+1100   65.9962 
+1150   65.7027 
+1200   65.3566 
+1250   65.0513 
+1300   64.705 
+1350   64.4232 
+1400   64.2141 
+1450   64.048 
+1500   63.8443 
+1550   63.5797 
+1600   63.3816 
+1650   63.2012 
+1700   62.9759 
+1750   62.8036 
+1800   62.668 
+1850   62.5792 
+1900   62.4454 
+1950   62.398 
+2000   62.2162 
+2050   62.1031 
+2100   61.9708 
+2150   61.8771 
+2200   61.7863 
+2250   61.7308 
+2300   61.604 
+2350   61.4741 
+2400   61.3551 
+2450   61.2507 
+2500   61.1148 
+2550   61.0738 
+2600   61.019 
+2650   60.9254 
+2700   60.8998 
+2750   60.8255 
+2800   60.8601 
+2850   60.7772 
+2900   60.7436 
+2950   60.733 
+3000   60.6207 
+fitting final gbm model with a fixed number of 3000 trees for overall
+
+mean total deviance = 565.567 
+mean residual deviance = 49.817 
+ 
+estimated cv deviance = 60.621 ; se = 0.958 
+ 
+training data correlation = 0.955 
+cv correlation =  0.945 ; se = 0.001 
+ 
+elapsed time -  0.47 minutes 
+
+ ########### warning ########## 
+ 
+maximum tree limit reached - results may not be optimal 
+  - refit with faster learning rate or increase maximum number of trees 
+
+> output_data <- new_ACAPs_cat %>% left_join(mob, by = c(ISO = "iso3c", 
++     date = "date")) %>% left_join(wb_metadata, by = "ISO") %>% 
++     ungroup(ISO) %>% select(overall, everything(), -country_region)
+
+> predicted <- predict.gbm(brt, output_data[which(is.na(output_data$overall)), 
++     c(4:(ncol(output_data)))], n.trees = brt$gbm.call$best.trees, 
++     type = "response")
+
+> output_data$observed <- !is.na(output_data$overall)
+
+> output_data$overall[which(is.na(output_data$overall))] <- predicted
+
+> output_data$all_overall <- predict.gbm(brt, output_data[, 
++     c(4:(ncol(output_data)))], n.trees = brt$gbm.call$best.trees, 
++     type = "response")
+
+> res <- select(output_data, ISO, date, overall, all_overall, 
++     observed, income_group) %>% mutate(overall = (overall + 100)/100, 
++     all_overall = (all_overall + 100)/100) %>% rename(C = overall, 
++     C_predict = all_overall, iso3c = ISO)
+
+> res <- split.data.frame(res, res$iso3c)
+
+> nms <- unique(squire::population$iso3c)
+
+> res_no <- lapply(nms[!nms %in% names(res)], function(x) {
++     return(data.frame())
++ })
+
+> names(res_no) <- nms[!nms %in% names(res)]
+
+> res <- append(res, res_no)
+
+> res <- lapply(res, function(x) {
++     if (nrow(x) > 0) {
++         return(as.data.frame(x))
++     }
++     else {
++         return(x)
++     }
++ })
+
+> res <- lapply(res, function(x) {
++     if (length(unique(x$C)) == 1) {
++         x <- rbind(x[1, ], x)
++         x$date[1] <- x$date[2] - 1
++         x[1, "C"] <- 1
++     }
++     return(x)
++ })
+
+> for (r in seq_along(res)) {
++     if (any(res[[r]]$observed)) {
++         lw <- res[[r]]$C[which(res[[r]]$observed)][1:7]
++         res[[r]]$C[1:(which(res[[r]]$observed)[1] - 1)] <- mean(lw)
++         rw <- tail(res[[r]]$C[which(res[[r]]$observed)], 14)
++         rw_end <- tail(which(res[[r]]$observed), 1)
++         rw_7 <- res[[r]]$C[(rw_end + 1):(rw_end + 7)]
++         res[[r]]$C[(rw_end + 1):nrow(res[[r]])] <- mean(rw)
++     }
++ }
+
+> saveRDS(res, "google_brt.rds")
+
+> saveRDS(brt, "google_brt_model.rds")
+
+> saveRDS(overall, "overall.rds")
+[ end        ]  2020-07-08 23:14:05
+[ elapsed    ]  Ran report in 28.75263 mins
+[ artefact   ]  google_brt.rds: cd90b1dc85383282e8af9b049b018734
+[ ...        ]  google_brt_model.rds: fa64320a9df36f45a8c71ca213890053
+[ ...        ]  overall.rds: 23c09bcdcf15e1b8de5600ff10c05a1e
+[ commit     ]  brt_google_mobility/20200708-224520-56a2c4b0
+[ copy       ]
