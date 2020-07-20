@@ -40,6 +40,10 @@ get_ecdc <- function(date = Sys.Date()) {
   # remove imported early death in Philippines
   d[which(d$countryterritoryCode=="PHL" & as.Date(d$dateRep) == as.Date("2020-02-02")),]$deaths <- 0
 
+  # remove negative deaths
+  d$deaths[which(d$deaths < 0)] <- 0
+  d$deaths[which(is.na(d$deaths))] <- 0
+
   return(d)
 
 }

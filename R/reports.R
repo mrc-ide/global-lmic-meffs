@@ -139,6 +139,99 @@ reports_4parameter_day <- function(date = NULL) {
 }
 
 #' @noRd
+reports_all <- function() {
+
+  wd <- file.path(here::here(),"analysis/data/raw_data/server_results/")
+  wdold <- getwd()
+  setwd(wd)
+
+  db <- orderly::orderly_db("destination")
+  if (is.null(date)) {
+    date <- as.character(Sys.Date())
+  }
+
+  ## First find the id corresponding to the ecdc report with data
+  sql <- 'SELECT report_version.id
+            FROM report_version
+            JOIN parameters
+              ON parameters.report_version = report_version.id
+           WHERE report_version.report = "ecdc"'
+
+  id <- DBI::dbGetQuery(db, sql)$id
+  if (length(id) == 0L) {
+    stop(sprintf("No 'ecdc' report for '%s'", as.character(date)))
+  } else if (length(id) > 1) {
+    message(sprintf("Multiple 'ecdc' reports for '%s'", as.character(date)))
+  }
+
+  # 4p
+  # ----------------------------------------------------------------------------
+
+  sql <- paste0('SELECT report_version.id, parameters.value as country
+            FROM report_version_artefact
+            JOIN file_artefact
+              ON file_artefact.artefact = report_version_artefact.id
+            JOIN depends
+              ON depends.use = file_artefact.id
+            JOIN report_version
+              ON report_version.id = depends.report_version
+            JOIN parameters
+              ON parameters.report_version = report_version.id
+           WHERE report_version_artefact.report_version IN (%s)
+             AND report = "', "lmic_reports_google_pmcmc", '"
+             AND parameters.name = "iso3c"
+           ORDER BY country, report_version.id')
+  sql <- sprintf(sql, paste(sprintf('"%s"', id), collapse = ", "))
+  reports <- DBI::dbGetQuery(db, sql)
+
+  all <- DBI::dbGetQuery(db, 'select * from parameters')
+  all <- all[all$name == "date",]
+  reports$date <- all$value[match(reports$id, all$report_version)]
+
+  # keep max on each day
+  max_reports <- group_by(reports, country, date) %>% summarise(id = max(id))
+
+  # 3p
+  # ----------------------------------------------------------------------------
+
+  sql <- paste0('SELECT report_version.id, parameters.value as country
+            FROM report_version_artefact
+            JOIN file_artefact
+              ON file_artefact.artefact = report_version_artefact.id
+            JOIN depends
+              ON depends.use = file_artefact.id
+            JOIN report_version
+              ON report_version.id = depends.report_version
+            JOIN parameters
+              ON parameters.report_version = report_version.id
+           WHERE report_version_artefact.report_version IN (%s)
+             AND report = "', "lmic_reports_google_pmcmc_no_decouple", '"
+             AND parameters.name = "iso3c"
+           ORDER BY country, report_version.id')
+  sql <- sprintf(sql, paste(sprintf('"%s"', id), collapse = ", "))
+  reports <- DBI::dbGetQuery(db, sql)
+
+  all <- DBI::dbGetQuery(db, 'select * from parameters')
+  all <- all[all$name == "date",]
+  reports$date <- all$value[match(reports$id, all$report_version)]
+
+  # keep max on each day
+  max_reports_3p <- group_by(reports, country, date) %>% summarise(id = max(id))
+
+  # finish ---------------------------------------------------------------------
+
+  max_reports$model <- "4p"
+  max_reports_3p$model <- "3p"
+
+  all_reports <- rbind(max_reports, max_reports_3p)
+
+  DBI::dbDisconnect(db)
+  setwd(wdold)
+  return(all_reports)
+}
+
+
+#' @noRd
 out_3parameter_list <- function(date) {
 
   reports <- reports_3parameter_day(date)
@@ -146,7 +239,7 @@ out_3parameter_list <- function(date) {
   grids <- pbapply::pblapply(seq_along(reports$id), function(x) {
 
     fs <- file.path(here::here(),
-                    "analysis/data/raw_data/server_results/archive/lmic_reports_google",
+                    "analysis/data/raw_data/server_results/archive/lmic_reports_google_pmcmc_no_decouple",
                     reports$id[x],
                     "grid_out.rds")
 

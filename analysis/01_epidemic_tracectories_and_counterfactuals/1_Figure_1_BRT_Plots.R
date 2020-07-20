@@ -10,7 +10,7 @@ conflict_prefer("select", "dplyr"); conflict_prefer("filter", "dplyr"); conflict
 source(file.path(here::here(),"analysis/01_epidemic_tracectories_and_counterfactuals/functions.R"))
 
 # Boosted Regression Tree Inference of Mobility Plotting
-date_0 <- "2020-06-27"
+date_0 <- "2020-07-04"
 mobility <- get_brt_predictions(date_0)
 mobility <- do.call(rbind, mobility)
 
@@ -26,15 +26,15 @@ a <- ggplot(observed_mobility, aes(x = 100 * (C - 1), y = 100 * (C_predict - 1),
   xlim(c(-95, 25)) +
   labs(x = "Observed Mobility Change (%)", y = "Predicted Mobility Change (%)", colour = "") +
   theme(legend.position = "bottom", axis.title.x = element_text(vjust = -2, size = 12),
-        axis.title.y = element_text(vjust = +4, size = 12), 
+        axis.title.y = element_text(vjust = +4, size = 12),
         legend.text = element_text(size = 12), axis.text = element_text(size = 11),
         plot.margin = unit(c(0.3, 0.3, 0.3, 0.3), "cm")) +
   guides(col=guide_legend(ncol=2)) +
-  geom_abline(intercept = 0, slope = 1, color = "black", 
+  geom_abline(intercept = 0, slope = 1, color = "black",
               linetype = "dashed", size = 1)
 
 
-# Second BRT Panel - Plotting Predictions and Observed for 4 Representative Countries 
+# Second BRT Panel - Plotting Predictions and Observed for 4 Representative Countries
 specific_countries <- observed_mobility %>%
   filter(iso3c == "COL" | iso3c == "IND" | iso3c == "PHL" | iso3c == "ZWE") %>%
   mutate(iso3c = factor(iso3c))

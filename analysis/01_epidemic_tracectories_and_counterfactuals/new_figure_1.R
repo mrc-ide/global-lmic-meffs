@@ -18,7 +18,7 @@ mobility <- do.call(rbind, mobility)
 observed_mobility <- mobility %>%
   filter(observed == TRUE)
 a <- ggplot(observed_mobility, aes(x = 100 * (C - 1), y = 100 * (C_predict - 1), col = income_group)) +
-  geom_point(size = 3) +
+  geom_point(size = 3, alpha = 0.5) +
   scale_colour_manual(labels = c("Low Income", "Lower Middle Income", "Upper Middle Income", "High Income"),
                       values = c("#C6E9F2", "#A5D6EF", "#5C97BC", "#29547A")) +
   theme_bw() +
@@ -26,11 +26,11 @@ a <- ggplot(observed_mobility, aes(x = 100 * (C - 1), y = 100 * (C_predict - 1),
   xlim(c(-95, 25)) +
   labs(x = "Observed Mobility Change (%)", y = "Predicted Mobility Change (%)", colour = "") +
   theme(legend.position = "bottom", axis.title.x = element_text(vjust = -2, size = 12),
-        axis.title.y = element_text(vjust = +4, size = 12), 
+        axis.title.y = element_text(vjust = +4, size = 12),
         legend.text = element_text(size = 12), axis.text = element_text(size = 11),
         plot.margin = unit(c(0.3, 0.3, 0.3, 0.3), "cm")) +
   guides(col=guide_legend(ncol=2)) +
-  geom_abline(intercept = 0, slope = 1, color = "black", 
+  geom_abline(intercept = 0, slope = 1, color = "black",
               linetype = "dashed", size = 1)
 
 
@@ -50,12 +50,10 @@ b <- ggplot(specific_countries, aes(x = date, y = C)) +
   theme(legend.position = "none")
 
 
-
 plot(mobility$CAF$C, mobility$AGO$C_predict, ylim = c(0, 1.2), xlim = c(0, 1.2))
 
-mobility <- do.call(rbind, mobility)
 mobility <- mobility %>%
-  filter(date < "2020-06-30")
+  filter(date < "2020-07-07")
 mobility$continent <- countrycode::countrycode(mobility$iso, "iso3c", destination = "continent")
 
 mobility_continent_summary <- mobility %>%
@@ -95,8 +93,8 @@ e <- ggplot(min_mobility, aes(x = continent, y = min_mob, colour = continent)) +
 
 
 
-# Collating Reports for the 3 and 4 Parameter Models 
-date_0 <- "2020-06-27"
+# Collating Reports for the 3 and 4 Parameter Models
+date_0 <- "2020-07-04"
 three_param <- reports_3parameter_day(date_0)
 four_param <- reports_4parameter_day(date_0)
 

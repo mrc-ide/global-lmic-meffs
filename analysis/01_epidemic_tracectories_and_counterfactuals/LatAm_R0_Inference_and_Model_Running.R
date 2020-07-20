@@ -19,12 +19,12 @@ four_param_list <- list()
 counter <- 1
 mean_R0s <- c()
 for (i in indices) {
-  four_out <- file.path(here::here(), "analysis/data/raw_data/server_results", "archive", 
+  four_out <- file.path(here::here(), "analysis/data/raw_data/server_results", "archive",
                         "lmic_reports_google_pmcmc", four_param$id[i], "grid_out.rds")
   temp <- readRDS(four_out)
-  temp_chains <- rbind(temp$pmcmc_results$chains$chain1$results[5000:10001, ],
-                       temp$pmcmc_results$chains$chain2$results[5000:10001, ],
-                       temp$pmcmc_results$chains$chain3$results[5000:10001, ])
+  temp_chains <- rbind(tail(temp$pmcmc_results$chains$chain1$results, 5000),
+                       tail(temp$pmcmc_results$chains$chain2$results, 5000),
+                       tail(temp$pmcmc_results$chains$chain3$results, 5000))
   temp_R0 <- mean(temp_chains$R0, na.rm = TRUE)
   mean_R0s <- c(mean_R0s, temp_R0)
 }
@@ -33,13 +33,13 @@ for (i in indices) {
 attack_rates <- matrix(nrow = 9, ncol = length(countries_of_interest))
 
 for (i in 1:length(mean_R0s)) {
-  
+
   temp_R0 <- mean_R0s[i]
   iso <- countries_of_interest[i]
   country <- countrycode::countrycode(iso, "iso3c", "country.name")
-  x <- run_explicit_SEEIR_model(country = country, 
-                                R0 = temp_R0, 
-                                day_return = TRUE, 
+  x <- run_explicit_SEEIR_model(country = country,
+                                R0 = temp_R0,
+                                day_return = TRUE,
                                 replicates = 25)
   infections <- format_output(x, var_select = "infections", reduce_age = FALSE)
   population <- x$parameters$population

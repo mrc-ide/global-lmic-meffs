@@ -1,6 +1,6 @@
 # package set up
 library(globallmicmeffs)
-date_0 <- "2020-06-17"
+date_0 <- "2020-07-04"
 
 reports <- reports_4parameter_day(date_0)
 get <- vector("list", nrow(reports))

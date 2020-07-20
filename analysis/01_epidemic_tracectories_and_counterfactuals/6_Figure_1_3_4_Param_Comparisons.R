@@ -10,7 +10,7 @@ conflict_prefer("select", "dplyr"); conflict_prefer("filter", "dplyr"); conflict
 source(file.path(here::here(),"analysis/01_epidemic_tracectories_and_counterfactuals/functions.R"))
 
 # Collating Report Dates
-date_0 <- "2020-06-27"
+date_0 <- "2020-07-04"
 three_param <- reports_3parameter_day(date_0)
 four_param <- reports_4parameter_day(date_0)
 
@@ -30,17 +30,17 @@ three_param_list <- list()
 four_param_list <- list()
 counter <- 1
 for (i in indices) {
-  
+
   # Loading the 3 Param Results
-  three_out <- file.path(here::here(), "analysis/data/raw_data/server_results", "archive", 
+  three_out <- file.path(here::here(), "analysis/data/raw_data/server_results", "archive",
                          "lmic_reports_google_pmcmc_no_decouple", three_param$id[i], "grid_out.rds")
   three_param_list[[counter]] <- readRDS(three_out)
-  
+
   # Loading the 4 Param Results
-  four_out <- file.path(here::here(), "analysis/data/raw_data/server_results", "archive", 
+  four_out <- file.path(here::here(), "analysis/data/raw_data/server_results", "archive",
                         "lmic_reports_google_pmcmc", four_param$id[i], "grid_out.rds")
   four_param_list[[counter]] <- readRDS(four_out)
-  
+
   counter <- counter + 1
 }
 

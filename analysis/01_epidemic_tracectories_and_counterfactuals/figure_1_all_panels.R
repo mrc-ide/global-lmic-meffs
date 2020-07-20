@@ -12,13 +12,13 @@ conflict_prefer("area", "patchwork")
 source(file.path(here::here(),"analysis/01_epidemic_tracectories_and_counterfactuals/functions.R"))
 
 # Collating Report Dates
-date_0 <- "2020-06-27"
+date_0 <- "2020-07-04"
 reports <- reports_3parameter_day(date_0)
 
 # Accessing World Bank Metadata
 raw_wb_metadata <- get_brt_world_bank_classification(date_0)
 wb_metadata <- raw_wb_metadata %>%
-  rename(iso = ï..country_code) %>%
+  rename(iso = country_code) %>%
   dplyr::select(iso, income_group) %>%
   filter(income_group != "") %>%
   mutate(income_group = factor(income_group, levels = rev(c("Low income", "Lower middle income", "Upper middle income", "High income"))))
@@ -201,30 +201,16 @@ ggplot(R0s, aes(x=R0, fill = continent)) + geom_density(alpha=0.5)
 
 # Extracting Rt Results by Country
 rt <- pbapply::pblapply(seq_along(reports$id), function(x) {
+
   iso <- reports$country[x]
-  out <- file.path(here::here(), "analysis/data/raw_data/server_results/", "archive", "lmic_reports_google", reports$id[x], "grid_out.rds")
+  out <- file.path(here::here(),
+                   "analysis/data/raw_data/server_results/",
+                   "archive", "lmic_reports_google_pmcmc",
+                   reports$id[x], "grid_out.rds")
   out <- readRDS(out)
 
-  rts <- lapply(1:100, function(y) {
-    tt <- squire:::intervention_dates_for_odin(dates = out$interventions$date_R0_change,
-                                               change = out$interventions$R0_change,
-                                               start_date = out$replicate_parameters$start_date[y],
-                                               steps_per_day = 1/out$parameters$dt)
-    df <- data.frame(
-      "Rt" = c(out$replicate_parameters$R0[y],
-               vapply(tt$change, out$scan_results$inputs$Rt_func, numeric(1),
-                      R0 = out$replicate_parameters$R0[y], Meff = out$replicate_parameters$Meff[y])),
-      "Meff" = out$replicate_parameters$Meff[y],
-      "date" = c(as.character(out$replicate_parameters$start_date[y]),
-                 as.character(out$interventions$date_R0_change[match(tt$change, out$interventions$R0_change)])),
-      "iso" = iso,
-      rep = y,
-      stringsAsFactors = FALSE)
-    df$pos <- seq_len(nrow(df))
-    return(df)
-  })
+  rt <- extract_Rt(out, iso)
 
-  rt <- do.call(rbind, rts)
   return(rt)
 })
 

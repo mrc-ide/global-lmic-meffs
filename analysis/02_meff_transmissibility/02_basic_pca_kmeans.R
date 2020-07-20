@@ -14,36 +14,24 @@ meffs <- pbapply::pblapply(seq_along(reports$id), function(x) {
 
   iso <- reports$country[x]
   out <- file.path(here::here(),
-                   "analysis/data/raw_data/server_results/archive/lmic_reports_google",
+                   "analysis/data/raw_data/server_results/archive/lmic_reports_google_pmcmc",
                    reports$id[x], "grid_out.rds")
   out <- readRDS(out)
+  rt <- extract_Rt(out, iso)
 
-  dfs <- lapply(1:100, function(y) {
+  Rt_tail <- (group_by(rt, rep) %>% summarise(Rt = tail(Rt,1)))$Rt
+  Rt_min <- (group_by(rt, rep) %>% summarise(Rt = min(Rt)))$Rt
 
-    # this function formats the dates related to the assumed start date
-    # here R0_change is google mobility
-    tt <- squire:::intervention_dates_for_odin(dates = out$interventions$date_R0_change,
-                                               change = out$interventions$R0_change,
-                                               start_date = out$replicate_parameters$start_date[y],
-                                               steps_per_day = 1/out$parameters$dt)
+  df <- data.frame(
+    "R0" = out$replicate_parameters$R0,
+    "Rt" = Rt_tail,
+    "Rt_min" = Rt_min,
+    "Meff" = out$replicate_parameters$Meff,
+    "date" = as.character(out$replicate_parameters$start_date),
+    "iso" = iso,
+    "max_mobility_change" = max(out$interventions$R0_change)-min(out$interventions$R0_change),
+    stringsAsFactors = FALSE)
 
-    # Rt is related to R0, Meff and R0_change
-    Rt <- vapply(tt$change, out$scan_results$inputs$Rt_func, numeric(1),
-                 R0 = out$replicate_parameters$R0[y], Meff = out$replicate_parameters$Meff[y])
-
-    df <- data.frame(
-      "R0" = out$replicate_parameters$R0[y],
-      "Rt" = tail(Rt, 1),
-      "Rt_min" = min(Rt),
-      "Meff" = out$replicate_parameters$Meff[y],
-      "date" = as.character(out$replicate_parameters$start_date[y]),
-      "iso" = iso,
-      "max_mobility_change" = max(out$interventions$R0_change)-min(out$interventions$R0_change),
-      stringsAsFactors = FALSE)
-    return(df)
-  } )
-
-  df <- do.call(rbind, dfs)
   return(df)
 })
 
