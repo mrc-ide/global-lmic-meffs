@@ -112,7 +112,7 @@ calc_DIC <- function(out, model) {
 }
 
 # Collating Report Dates
-date_0 <- "2020-06-27"
+date_0 <- "2020-07-04"
 three_param <- reports_3parameter_day(date_0)
 four_param <- reports_4parameter_day(date_0)
 
@@ -180,6 +180,53 @@ hist(four_overall$Meff, breaks = 10, xlim = c(1, 5))
 
 hist(four_overall$Meff)
 hist(four_overall$Meff_pl)
+
+## DIC over time
+
+all_reports <- reports_all()
+
+dics <- pbapply::pblapply(seq_along(all_reports$id), function(x) {
+
+  message(x)
+
+  if(all_reports$model[x] == "3p") {
+  out <- readRDS(
+    file.path(here::here(),
+              "analysis/data/raw_data/server_results/archive/lmic_reports_google_pmcmc_no_decouple/",
+              all_reports$id[x],
+              "grid_out.rds")
+    )
+  model <- "3_param"
+  } else {
+    out <- readRDS(
+      file.path(here::here(),
+                "analysis/data/raw_data/server_results/archive/lmic_reports_google_pmcmc/",
+                all_reports$id[x],
+                "grid_out.rds")
+    )
+    model <- "4_param"
+  }
+  DIC <- calc_DIC(out, model)
+  return(DIC)
+})
+
+all_reports$DIC <- unlist(dics)
+raw_wb_metadata <- get_brt_world_bank_classification(date_0)
+all_reports$income <- raw_wb_metadata$income_group[match(all_reports$country, raw_wb_metadata$country_code)]
+
+x11()
+all_dics <- ggplot(all_reports, aes(x=as.Date(date), y = DIC, color = model)) +
+  geom_line() +
+  facet_wrap(~country, scales = "free_y") +
+  scale_x_date(limits=c(as.Date("2020-05-01"),as.Date("2020-07-04")), date_breaks = "1 month", date_labels = "%b %d")
+
+income_dics <- all_reports %>% group_by(date, income, model) %>%
+  summarise(y = sum(DIC)) %>%
+  mutate(income = factor(income, levels = c("High income","Upper middle income","Lower middle income","Low income"))) %>%
+  ggplot(aes(x = as.Date(date), y = y, color = income, linetype = model)) +
+  geom_line() +
+  ylab("DIC") +
+  xlab("Date")
 
 
 # calc_DIC <- function(out, model) {

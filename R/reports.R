@@ -146,9 +146,6 @@ reports_all <- function() {
   setwd(wd)
 
   db <- orderly::orderly_db("destination")
-  if (is.null(date)) {
-    date <- as.character(Sys.Date())
-  }
 
   ## First find the id corresponding to the ecdc report with data
   sql <- 'SELECT report_version.id
@@ -158,11 +155,6 @@ reports_all <- function() {
            WHERE report_version.report = "ecdc"'
 
   id <- DBI::dbGetQuery(db, sql)$id
-  if (length(id) == 0L) {
-    stop(sprintf("No 'ecdc' report for '%s'", as.character(date)))
-  } else if (length(id) > 1) {
-    message(sprintf("Multiple 'ecdc' reports for '%s'", as.character(date)))
-  }
 
   # 4p
   # ----------------------------------------------------------------------------
@@ -224,6 +216,7 @@ reports_all <- function() {
   max_reports_3p$model <- "3p"
 
   all_reports <- rbind(max_reports, max_reports_3p)
+  all_reports <- all_reports[as.Date(all_reports$date) %in% (as.Date("2020-04-11") + seq(0,84,7)), ]
 
   DBI::dbDisconnect(db)
   setwd(wdold)
