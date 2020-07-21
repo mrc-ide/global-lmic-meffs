@@ -223,11 +223,13 @@ all_dics <- ggplot(all_reports, aes(x=as.Date(date), y = DIC, color = model)) +
 income_dics <- all_reports %>% group_by(date, income, model) %>%
   summarise(y = sum(DIC)) %>%
   mutate(income = factor(income, levels = c("High income","Upper middle income","Lower middle income","Low income"))) %>%
+  mutate(model = c("No uncopuling", "Uncoupling")[match(model, c("3p", "4p"))]) %>%
   ggplot(aes(x = as.Date(date), y = y, color = income, linetype = model)) +
-  geom_line() +
+  scale_linetype(name = "Model") +
+  geom_line(lwd = 1) +
   ylab("DIC") +
-  xlab("Date")
-
+  xlab("Date") +
+  theme_bw()
 
 # calc_DIC <- function(out, model) {
 #
