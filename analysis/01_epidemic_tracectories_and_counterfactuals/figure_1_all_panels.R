@@ -18,7 +18,7 @@ reports <- reports_3parameter_day(date_0)
 # Accessing World Bank Metadata
 raw_wb_metadata <- get_brt_world_bank_classification(date_0)
 wb_metadata <- raw_wb_metadata %>%
-  rename(iso = country_code) %>%
+  rename(iso = ï..country_code) %>%
   dplyr::select(iso, income_group) %>%
   filter(income_group != "") %>%
   mutate(income_group = factor(income_group, levels = rev(c("Low income", "Lower middle income", "Upper middle income", "High income"))))
